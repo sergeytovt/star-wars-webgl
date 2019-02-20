@@ -1,0 +1,411 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+<title>Star Wars</title>
+<style>
+	body {
+	margin: auto;
+	overflow: hidden;}
+</style> 
+</head>
+
+<script src="js/Three.js"></script>
+<script src="js/KeyboardState.js"></script>
+<script src="js/OrbitControls.js"></script>
+
+<script src="js/ParticleEngine.js"></script>
+<script src="js/ParticleEngineExamples.js"></script>
+<script src="js/jquery-1.11.3.min.js"></script>
+
+<script>
+var container, scene, camera, renderer, xwingcamera, r2d2camera;
+var xwingCameraActive = false;
+var r2d2CameraActive = false;
+var starsky, asteroid, DeathStar, dsfighter, dsfighter1, dsfighter2, xwing, r2d2, plane, sky;
+var geometry,loader;
+var xwingspeed = 0;
+var keyboard = new KeyboardState();
+var clock = new THREE.Clock();
+	
+function initScene() 
+{
+	
+    renderer = new THREE.WebGLRenderer(  );
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    container = document.createElement( 'div' );
+    document.body.appendChild( container );
+    container.appendChild( renderer.domElement );
+
+    scene = new THREE.Scene();
+
+    camera = new THREE.PerspectiveCamera
+	( 45,window.innerWidth / window.innerHeight, 0.1, 20000 );
+    camera.position.set( 0, 200, 1000 );
+    camera.lookAt(scene.position);
+    scene.add(camera);
+	
+	// camera xwing
+	var SCREEN_WIDTH = window.innerWidth, SCREEN_HEIGHT = window.innerHeight;
+	var VIEW_ANGLE = 45, ASPECT = SCREEN_WIDTH / SCREEN_HEIGHT, NEAR = 0.1, FAR = 20000;
+	xwingcamera = new THREE.PerspectiveCamera( VIEW_ANGLE, ASPECT, NEAR, FAR);
+	scene.add(xwingcamera);
+	
+	// camera r2d2
+	var SCREEN_WIDTH = window.innerWidth, SCREEN_HEIGHT = window.innerHeight;
+	var VIEW_ANGLE = 45, ASPECT = SCREEN_WIDTH / SCREEN_HEIGHT, NEAR = 0.1, FAR = 20000;
+	r2d2camera = new THREE.PerspectiveCamera( VIEW_ANGLE, ASPECT, NEAR, FAR);
+	scene.add(r2d2camera);
+	
+	controls = new THREE.OrbitControls( camera, renderer.domElement );
+	
+	 // Create an event listener that resizes the renderer with the browser window.
+      window.addEventListener('resize', function() {
+        var WIDTH = window.innerWidth,
+            HEIGHT = window.innerHeight;
+        renderer.setSize(WIDTH, HEIGHT);
+        camera.aspect = WIDTH / HEIGHT;
+        camera.updateProjectionMatrix();
+      });
+	
+	// add subtle ambient lighting
+    var ambientLight = new THREE.AmbientLight(0x222222);
+    scene.add(ambientLight);
+      
+    // directional lighting
+    var directionalLight = new THREE.DirectionalLight( 0xffffff, 1 );
+	directionalLight.castShadow = true;
+    directionalLight.position.set(1200, 200, 1200);
+	directionalLight.shadowMapWidth = 2*512;
+    directionalLight.shadowMapHeight = 2*512;
+    scene.add(directionalLight);
+	
+	
+	var Gsphere = new THREE.SphereGeometry(50,20,20);
+	var suntexture = new THREE.ImageUtils.loadTexture("images/sun.jpg");
+	var matSp = new THREE.MeshBasicMaterial({map:suntexture});
+	var sun = new THREE.Mesh(Gsphere, matSp);	
+	sun.position.set(1200, 200, 1200);
+	scene.add(sun);
+
+	
+	//load asteroid model and texture
+	loader = new THREE.JSONLoader();
+	loader.load('./models/asteroid.js', function ( asteroidgeometry, materials ) {
+	var asteroidmaterial = new THREE.MeshPhongMaterial( {
+					color: 0xdddddd,
+					specular: 0x222222,
+					shininess: 150,
+					map: THREE.ImageUtils.loadTexture( "./images/asteroid.jpg" ),
+					normalMap: THREE.ImageUtils.loadTexture( "./images/asteroid_n.jpg" ),
+					normalScale: new THREE.Vector2( 0.8, 0.8 ),
+					wrapRGB: new THREE.Vector3( 0.575, 0.5, 0.5 ),
+					wrapAround: true
+				} );
+	
+	var asteroid = new THREE.Mesh( asteroidgeometry, asteroidmaterial );
+	asteroid.position.set(0,0,0);
+	asteroid.castShadow = true;
+	asteroid.receiveShadow	= true;
+	scene.add(asteroid);
+	}
+	);
+	//floor
+	loader = new THREE.JSONLoader();
+	loader.load('./models/asteroidfloor.js', function ( asteroidfloorgeometry, materials ) {
+	var asteroidfloortexture = THREE.ImageUtils.loadTexture( "./images/CruiserFloor.jpg" );
+	var asteroidfloormaterial = new THREE.MeshPhongMaterial( { 
+	map 		: asteroidfloortexture, 
+	ambient		: 0x444444,
+	shininess	: 150, 
+	specular	: 0x888888,
+	shading		: THREE.SmoothShading,} ); 
+	var asteroidfloor = new THREE.Mesh( asteroidfloorgeometry, asteroidfloormaterial );
+	asteroidfloor.position.set(0,2,0);
+	asteroidfloor.receiveShadow	= true;
+	//scene.add(asteroidfloor);
+	}
+	);
+	//karkas
+	loader = new THREE.JSONLoader();
+	loader.load('./models/asteroidkarkas.js', function ( asteroidkarkasgeometry, materials ) {
+	var asteroidkarkasmaterial = new THREE.MeshPhongMaterial( { color:0xDCDCDC,
+	side		: THREE.DoubleSide,
+	ambient		: 0x444444,
+	shininess	: 150, 
+	specular	: 0x888888,
+	shading		: THREE.SmoothShading}); 
+	var asteroidkarkas = new THREE.Mesh( asteroidkarkasgeometry, asteroidkarkasmaterial );
+	asteroidkarkas.position.set(0,0,0);
+	asteroidkarkas.castShadow = true;
+	asteroidkarkas.receiveShadow = true;
+	//scene.add(asteroidkarkas);
+	}
+	);
+	
+	//dstar
+	loader = new THREE.JSONLoader();
+	loader.load('./models/DeathStar.js', function ( DeathStargeometry, materials ) {
+	var DeathStartexture = THREE.ImageUtils.loadTexture( "./images/ds3 bw.jpg" );
+	var DeathStarmaterial = new THREE.MeshPhongMaterial( { 
+	map 		: DeathStartexture,
+	side		: THREE.DoubleSide,
+	ambient		: 0x444444,
+	color		: 0xffffff,
+	shininess	: 150, 
+	specular	: 0x888888,
+	shading		: THREE.SmoothShading} ); 
+	var DeathStar = new THREE.Mesh( DeathStargeometry, DeathStarmaterial );
+	DeathStar.position.set(-1400,-100,-1400);
+	DeathStar.scale.set(15,15,15);
+	DeathStar.castShadow = true;
+	DeathStar.receiveShadow	= true;
+	scene.add(DeathStar);
+	}
+	);
+	
+	//dsfighter
+	loader = new THREE.JSONLoader();
+	loader.load('./models/dsfighter.js', function ( dsfightergeometry, dsfightermaterials ) {
+	var dsfightertexture = THREE.ImageUtils.loadTexture( "./images/dsFighter.jpg" );
+	var dsfightermaterial = new THREE.MeshPhongMaterial( { map : dsfightertexture} ); 
+	dsfighter = new THREE.Mesh( dsfightergeometry, dsfightermaterial );
+	dsfighter.position.set(-1400,100,-1400);
+	dsfighter.scale.set(0.3,0.3,0.3);
+	dsfighter.castShadow = true;
+	dsfighter.receiveShadow	= true;
+	scene.add(dsfighter);
+	}
+	);
+	
+	//dsfighter
+	loader = new THREE.JSONLoader();
+	loader.load('./models/dsfighter.js', function ( dsfightergeometry, materials ) {
+	var dsfightertexture = THREE.ImageUtils.loadTexture( "./images/dsFighter.jpg" );
+	var dsfightermaterial = new THREE.MeshPhongMaterial( { map : dsfightertexture} ); 
+	dsfighter1 = new THREE.Mesh( dsfightergeometry, dsfightermaterial );
+	dsfighter1.position.set(-1450,135,-1400);
+	dsfighter1.scale.set(0.3,0.3,0.3);
+	dsfighter1.castShadow = true;
+	dsfighter1.receiveShadow = true;
+	scene.add(dsfighter1);
+	}
+	);
+	
+	//dsfighter
+	loader = new THREE.JSONLoader();
+	loader.load('./models/dsfighter.js', function ( dsfightergeometry, materials ) {
+	var dsfightertexture = THREE.ImageUtils.loadTexture( "./images/dsFighter.jpg" );
+	var dsfightermaterial = new THREE.MeshPhongMaterial( { map : dsfightertexture} ); 
+	dsfighter2 = new THREE.Mesh( dsfightergeometry, dsfightermaterial );
+	dsfighter2.position.set(-1450,85,-1400);
+	dsfighter2.scale.set(0.3,0.3,0.3);
+	dsfighter2.castShadow = true;
+	dsfighter2.receiveShadow = true;
+	scene.add(dsfighter2);
+	}
+	);
+	
+	//xwing
+	loader = new THREE.JSONLoader();
+	loader.load('./models/xwing.js', function ( xwinggeometry, materials ) {
+	var xwingtexture = THREE.ImageUtils.loadTexture( "./images/XWing.jpg" );
+	var xwingmaterial = new THREE.MeshPhongMaterial( { map : xwingtexture} ); 
+	xwing = new THREE.Mesh( xwinggeometry, xwingmaterial );
+	xwing.position.set(0,276,0);
+	xwing.scale.set(0.4,0.4,0.4);
+	xwing.castShadow = true;
+	xwing.receiveShadow	= true;
+	scene.add(xwing);
+	}
+	);
+	
+	//r2d2
+	loader = new THREE.JSONLoader();
+	loader.load('./models/R2D2.js', function ( r2d2geometry, materials ) {
+	var r2d2texture = THREE.ImageUtils.loadTexture( "./images/r2d2.jpg" );
+	var r2d2material = new THREE.MeshPhongMaterial( { map : r2d2texture} ); 
+	r2d2 = new THREE.Mesh( r2d2geometry, r2d2material );
+	r2d2.position.set(20000,18,0);
+	r2d2.scale.set(0.3,0.3,0.3);
+	r2d2.castShadow = true;
+	r2d2.receiveShadow	= true;
+	scene.add(r2d2);
+	}
+	);
+	
+	//background
+	var SkyGeometry = new THREE.CubeGeometry( 10000, 10000, 10000 );
+	var texture = THREE.ImageUtils.loadTexture("images/skybox.jpg");
+	var SkyMaterial = new THREE.MeshBasicMaterial( {map:texture,side:THREE.DoubleSide} );
+	starsky = new THREE.Mesh( SkyGeometry, SkyMaterial );
+	scene.add(starsky);
+	
+	//scene 2
+	
+	var PlaneGeometry = new THREE.PlaneGeometry(3000, 3000, 1, 1);
+	var PlaneTexture = new THREE.ImageUtils.loadTexture( 'images/sand.jpg' );
+	var PlaneMaterial = new THREE.MeshBasicMaterial( { map: PlaneTexture, side: THREE.DoubleSide } );
+	plane = new THREE.Mesh(PlaneGeometry, PlaneMaterial);
+	plane.position.set(20000, -0.5, 0);
+	plane.rotation.x = Math.PI / 2;
+	plane.receiveShadow	= true;
+	scene.add(plane);
+	
+	var BoxGeometry = new THREE.SphereGeometry( 10000, 60, 60 );
+	var texture = THREE.ImageUtils.loadTexture("images/sky.jpg");
+	var BoxMaterial = new THREE.MeshBasicMaterial( {map:texture,side:THREE.DoubleSide} );
+	sky = new THREE.Mesh( BoxGeometry, BoxMaterial );
+	sky.position.set(20000, 0, 0);
+	scene.add(sky);
+
+	this.engine = new ParticleEngine();
+	engine.setValues( Examples.starfield );
+	engine.initialize();
+	
+}
+
+function key ()
+{
+	var delta = clock.getDelta(); // seconds.
+	//керування р2д2
+	if (r2d2CameraActive)
+	{
+	var moveDistance = 40 * delta; // 8 pixels per second
+	// move forwards/backwards/left/right
+	if ( keyboard.pressed("W") )
+		r2d2.translateZ(  moveDistance );
+	if ( keyboard.pressed("S") )
+		r2d2.translateZ( -moveDistance );
+
+	// rotate left/right/up/down
+	var rotateAngle1 = Math.PI / 2 * delta;   // pi/2 radians (90 degrees) per second
+	var rotation_matrix = new THREE.Matrix4().identity();
+	if ( keyboard.pressed("A") )
+		r2d2.rotateOnAxis( new THREE.Vector3(0,1,0), rotateAngle1);
+	if ( keyboard.pressed("D") )
+		r2d2.rotateOnAxis( new THREE.Vector3(0,1,0), -rotateAngle1);
+	}
+	//end керування р2д2
+	
+	//керування винищувачем
+	// rotate left/right/up/down
+	var rotateAngle = Math.PI / 2 * delta;   // pi/2 radians (90 degrees) per second
+	if (xwingCameraActive)
+	{
+	var rotation_matrix = new THREE.Matrix4().identity();
+	if ( keyboard.pressed("Q") )
+		xwing.rotateOnAxis( new THREE.Vector3(0,1,0), rotateAngle);
+	if ( keyboard.pressed("E") )
+		xwing.rotateOnAxis( new THREE.Vector3(0,1,0), -rotateAngle);
+	if ( keyboard.pressed("W") && xwingspeed != 0)
+		xwing.rotateOnAxis( new THREE.Vector3(1,0,0), rotateAngle);
+	if ( keyboard.pressed("S") && xwingspeed != 0)
+		xwing.rotateOnAxis( new THREE.Vector3(1,0,0), -rotateAngle);
+	if ( keyboard.pressed("D") && xwingspeed != 0)
+		xwing.rotateOnAxis( new THREE.Vector3(0,0,1), rotateAngle);
+	if ( keyboard.pressed("A") && xwingspeed != 0)
+		xwing.rotateOnAxis( new THREE.Vector3(0,0,1), -rotateAngle);
+	
+	if (xwingspeed != 0) 
+	{
+		xwing.translateZ(xwingspeed);
+	}
+	
+	if ( keyboard.down("R") && xwingspeed < 4)
+		xwingspeed += 1;		
+	if ( keyboard.down("F") && xwingspeed > -2)
+		xwingspeed -= 1;
+	}
+	//керування винищувачем кінець
+	
+
+	//поворот вокруг звізди смерті
+	if (dsfighter && dsfighter1 && dsfighter2) {
+		dsfighter.position.x = 200 * Math.sin(step*0.3)-1400;
+		dsfighter.position.z = 200 * Math.cos(step*0.3)-1400;
+		dsfighter1.position.x = 200 * Math.sin(step*0.4)-1450;
+		dsfighter1.position.z = 200 * Math.cos(step*0.4)-1400;
+		dsfighter2.position.x = 200 * Math.sin(step*0.6)-1400;
+		dsfighter2.position.z = 200 * Math.cos(step*0.6)-1400;		
+	}
+	
+	//camera xwing
+	var relativeCameraOffset = new THREE.Vector3(0,30,-110);
+	if (xwingCameraActive) {
+	 var cameraOffset = relativeCameraOffset.applyMatrix4( xwing.matrixWorld );
+	xwingcamera.position.x = cameraOffset.x;
+	xwingcamera.position.y = cameraOffset.y;
+	xwingcamera.position.z = cameraOffset.z;
+	xwingcamera.lookAt( xwing.position );
+	}
+	
+	//camera r2d2
+	var relativeCameraOffset2 = new THREE.Vector3(0,250,-600);
+	if (r2d2CameraActive) {
+	 var cameraOffset2 = relativeCameraOffset2.applyMatrix4( r2d2.matrixWorld );
+	r2d2camera.position.x = cameraOffset2.x;
+	r2d2camera.position.y = cameraOffset2.y;
+	r2d2camera.position.z = cameraOffset2.z;
+	r2d2camera.lookAt( r2d2.position );
+	}
+	
+	if ( keyboard.pressed("1") )
+	{  
+		xwingCameraActive = true;
+		r2d2CameraActive = false;	
+	}
+	if ( keyboard.pressed("2") )
+	{  
+		xwingCameraActive = false;
+		r2d2CameraActive = true;
+	}
+	if ( keyboard.pressed("3") )
+	{  
+		xwingCameraActive = false;
+		r2d2CameraActive = false;	
+	}
+}
+var step = 0.0;
+function animateScene() 
+{
+	//поворот навколо зірки смерті
+	step += Math.PI/180;
+	document.getElementById("on").innerHTML = "1 - камера винищувач<br>2 - камера робот<br>3 - свободна камера<br>xwingspeed: " + xwingspeed;
+    requestAnimationFrame( animateScene);
+	renderScene();		
+	update();
+}
+
+function update()
+{	
+    key();
+	keyboard.update();
+	var dt = clock.getDelta();
+	engine.update( dt * 0.5 );
+}
+
+function renderScene() 
+{	
+	renderer.shadowMapEnabled = true;
+	renderer.shadowMapSoft	= true;
+	if (xwingCameraActive)
+	{  renderer.render( scene, xwingcamera );  }
+	else if (r2d2CameraActive)
+	{  renderer.render( scene, r2d2camera );  }
+	else
+	{  renderer.render( scene, camera );  }
+}
+
+
+$( document ).ready(function() {
+    initScene();
+    animateScene();
+});
+</script>
+<body>
+<div id="container">
+</div>
+<p id="on" style="position: absolute; left:5px; top:5px; color:#fff;"></p>
+<p style="position: absolute; right:5px; bottom:5px; color:#fff;">Автор: Микоряк Іван</p>
+</body>
+</html>
